@@ -1,0 +1,258 @@
+\chapter{Marco Teórico}
+
+
+\section{Sistema Determinista}
+
+En matemáticas y física, se denomina sistema determinista a aquel en que el azar no está
+involucrado en el desarrollo de los futuros estados del sistema. Un modelo determinista
+producirá siempre la misma salida a partir de las mismas condiciones de partida o el estado
+inicial.
+
+A diferencia de los estocásticos o aleatorios en los que los estados futuros no están
+determinados por los previos (como la secuencia de caras y cecas de una moneda no cargada),
+en los deterministas, \textbf{cada estado futuro del sistema está determinado por el previo}
+en tanto se desprende de cómo queda afectado dadas las variables de entorno y el previsto
+comportamiento ante los cambios en ese ambiente. Los sistemas descritos adecuadamente por la
+mecánica clásica o la mecánica relativista se comportan siempre como sistemas deterministas.
+
+\section{Coeficiente de variación}
+
+La desviación estándar es una medida absoluta de la dispersión que expresa la variación en
+las mismas unidades que los datos originales.  
+
+La desviación estándar no puede ser la única base para la comparación de dos distribuciones.
+Si tenemos una desviación estándar de 10 y una media de 5, los valores varían en una cantidad
+que es el doble de la media. Si, por otro lado, tenemos una desviación estándar de 10 y una
+media de 5,000, la variación relativa a la media es insignificante. En consecuencia, no
+podemos conocer la dispersión de un conjunto de datos hasta que conocemos su desviación
+estándar, su media y cómo se compara la desviación estándar con la media.
+
+Lo que necesitamos es \textbf{una medida relativa que nos proporcione una estimación de la
+magnitud de la desviación respecto a la magnitud de la media}. El coeficiente de variación es
+una de estas medidas \emph{relativas} de dispersión. Relaciona la desviación estándar y la
+media, expresando la desviación estándar como porcentaje de la media. La unidad de medida,
+entonces, es "porcentaje", en lugar de las unidades de los datos originales.
+
+
+\begin{equation}
+   \bm{cv = \frac{\sigma}{\mu}}
+   \label{cv}
+\end{equation}
+
+\im{Ejemplo}
+
+<<fig.width=7>>=
+tibble(acciones_a = rnorm(1000, mean = 4, sd = 2), 
+       acciones_b = rnorm(1000, mean = 80, sd = 8)) |> 
+ pivot_longer(cols = everything(), 
+              names_to = "activo",
+              values_to = "precio") |> 
+ ggplot(aes(x = precio, y = activo, fill = stat(x))) +
+ geom_density_ridges_gradient(scale = 5) +
+ scale_fill_viridis_c(name = "Ingreso", option = "C") +
+ scale_x_continuous(labels = dollar, breaks = seq(0, 90, 10)) +
+ furia
+@
+
+
+Hay dos empresas con acciones. El precio medio de cierre de las acciones de las dos empresas
+es $\bar{x}_{A} = 4$ dólares y $\bar{x}_{B} = 80$. Se observó que las desviaciones típicas
+eran muy diferentes $s_{A} = 2$ y $s_{B} = 8$. ¿Deben comprarse las acciones de la empresa A,
+dado que la desviación típica de las acciones de la B es mayor?
+
+Podríamos creer que las acciones de la empresa B son más volátiles que las de la A
+
+<<>>=
+(cv_a <- (2/4) * 100)
+(cv_b <- (8/80) * 100)
+@
+
+\begin{shaded}
+Obsérvese que el valor de mercado de las acciones de A fluctúa más de un periodo a
+otro que el de las acciones de B. Así que vemos que el activo B, quien tiene una variación
+\emph{absoluta} mayor que el activo A, tiene una variación \emph{relativa} menor que la del
+activo A, debido a que la media de producción del activo B es muy mayor que la de A.
+\end{shaded}
+
+\section{Ley de los grandes números}
+
+En la teoría de la probabilidad, bajo el término genérico de ley de los grandes números se
+engloban varios teoremas que describen el comportamiento del promedio de una sucesión de
+variables aleatorias conforme aumenta su número de ensayos.
+
+Estos teoremas prescriben condiciones suficientes para garantizar que dicho promedio converja
+(en los sentidos explicados abajo) al promedio de las esperanzas de las variables aleatorias
+involucradas. Las distintas formulaciones de la ley de los grandes números (y sus condiciones
+asociadas) especifican la convergencia de formas distintas.
+
+Simplemente dice que si te tomas la molestia de recopilar una cantidad infinita de datos,
+estimas perfectamente la media de la población. Tenga en cuenta que hay suposiciones de
+muestreo que deben cumplirse para que este resultado sea cierto. Los datos tienen que ser
+variables aleatorias independientes e idénticamente distribuidas (iid).
+
+<<>>=
+n <- 1000
+medias <- cumsum(rnorm(n))/(1:n)
+tibble(x = 1:n, y = medias) |> 
+ ggplot(aes(x = x, y = y)) +
+ geom_hline(yintercept = 0) + geom_line(size = 2) +
+ labs(x = "Number of obs", y = "Cumulative mean") + yunkel
+@
+
+\section{Cadenas de Markov}
+
+En la teoría de la probabilidad, se conoce como cadena de Márkov o modelo de Márkov a un tipo
+especial de proceso estocástico discreto en el que la probabilidad de que ocurra un evento
+depende solamente del evento inmediatamente anterior. Esta característica de incluir una
+memoria reciente recibe el nombre de propiedad de Markov en contraste con los eventos
+independientes que no tienen memoria de ningún evento anterior.
+
+La cadena de Markov, también conocida como modelo de Markov o proceso de Markov, es un
+concepto desarrollado dentro de la teoría de la probabilidad y la estadística que establece
+una fuerte dependencia entre un evento y otro suceso anterior.
+
+Según señaló Markov, en sistemas o procesos estocásticos (es decir, aleatorios) que presentan
+un estado presente es posible conocer sus antecedentes o desarrollo histórico. Por lo tanto,
+es factible establecer una descripción de la probabilidad futura de los mismos.
+
+Más formalmente, la definición supone que en procesos estocásticos la probabilidad de que
+algo suceda solamente depende del pasado histórico de la realidad que estamos estudiando. Por
+este motivo, a menudo se dice que estas cadenas cuentan con memoria.
+
+La base de las cadenas es la conocida como propiedad de Markov, la cual resume lo dicho
+anteriormente en la siguiente regla: lo que la cadena experimente en un momento $t + 1$
+solamente depende de lo acontecido en el momento $t$ (el inmediatamente anterior).
+
+Dada esta sencilla explicación de la teoría, puede observarse que es posible a través de la
+misma conocer la probabilidad de que un estado ocurra en el largo plazo. Esto ayuda
+indudablemente a la predicción y estimación en largos periodos de tiempo.
+
+Definimos un proceso estocástico en tiempos discretos etiquetados consecutivamente
+${t_{n}: \; n = 0, 1, 2 \; ...}$ para un sistema con un conjunto finito de estados posibles
+$S_{1}, S_{2}, S_{3},\; ...$ y denotamos por $X_{t}$ el estado en el que se encuentra el
+sistema en el tiempo $t$. Consideramos la probabilidad condicional de que
+$X_{t_{n}} = S_{i_{n}}$
+
+Entonces:
+
+\begin{equation}
+   \bm{P(X_{t_{n}} = S_{i_{n}}|X_{t_{n-1}} = S_{i_{n-1}},  X_{t_{n-2}} = S_{i_{n-2}},\; ...\;, X_{t_{1}} = S_{i_{1}})}
+   \label{monteq}
+\end{equation}
+
+\section{Monte Carlo}
+
+La simulación de Monte Carlo es un método para evaluar iteratívamente un modelo determinista
+utilizando conjuntos de números aleatorios como entradas. Este método se usa a menudo cuando
+el modelo es complejo, no lineal o implica más de un par de parámetros inciertos. Por lo
+general, una simulación puede implicar más de 10 000 evaluaciones del modelo, una tarea que
+en el pasado solo era práctica con supercomputadoras.
+
+\begin{figure}[H]
+\includegraphics{monte0}
+\caption{Representación esquemática del método de Monte Carlo}
+   \label{fig:monte}
+\end{figure}
+
+Cuanto mejor pueda el analista estructurar un modelo de simulación para emular el sistema
+real, más confiables serán los resultados en las decisiones de resolución de problemas.
+Además de formular adecuadamente las ecuaciones y los algoritmos del sistema, el analista se
+enfrenta a la selección de las distribuciones de probabilidad que se aplican a cada variable
+de entrada en el modelo. Esto se hace con el uso de los datos, empíricos o muestrales, que
+están disponibles. Con estos datos, se seleccionan las distribuciones de probabilidad y se
+estiman los valores de los parámetros que las acompañan. Cuanto mejor sea el ajuste, mejor
+será el modelo,\citep[pag. ~4]{thomopoulos_essentials_2013}
+
+Otro problema que a veces enfrenta el analista es elegir la distribución de probabilidad y
+los valores de los parámetros correspondientes cuando no hay datos disponibles para una
+variable de entrada. En esta situación, el analista confía en el mejor juicio de uno o más
+expertos.
+
+\subsection{Tipos de Simulaciones}
+
+Hay dos tipos de simulaciones con respecto al análisis de salida.
+
+ \begin{enumerate}[numeros]
+   
+   \item \textbf{Simulación de terminación:} Una simulación de terminación es aquella que se
+   ejecuta durante un tiempo TE donde E es el evento especificado que detiene la simulación.
+   
+      \begin{itemize}[itemsep=1ex]
+      
+        \item Se ejecuta durante un período de tiempo $T_{E}$, donde E es un evento
+        específico que detiene la simulación.
+        
+        \item Comienza en el tiempo 0 bajo condiciones iniciales bien especificadas.
+        
+        \item Termina en el tiempo de parada $T_{E}$
+        
+        \item Ejemplo: Un banco abre a las 8:30 am (hora 0) sin clientes presentes y 8 de los
+        11 cajeros trabajando (condiciones iniciales), y cierra a las 4:30 pm 
+        (Hora $T_{E} = 480$ minutos).
+        
+        \item El analista de simulación opta por considerarlo un sistema de terminación
+        porque el objeto de interés es la operación de un día.
+      
+      \end{itemize}
+      
+   \item \textbf{Simulación sin terminación:} Una simulación sin terminación es aquella que
+   se ejecuta continuamente.
+   
+      \begin{itemize}[itemsep=1ex]
+      
+        \item Se ejecuta de forma continua, o al menos durante un período de tiempo muy largo.
+        
+        \item Ejemplos: líneas de montaje que se apagan con poca frecuencia, sistemas
+        telefónicos, salas de emergencia de hospitales.
+        
+        \item Estudie las propiedades de estado estacionario (largo plazo) del sistema,
+        propiedades que no están influenciadas por las condiciones iniciales del modelo.
+        
+      \end{itemize}
+   
+ \end{enumerate}
+
+\section{Metodología Minitab}
+
+ \begin{enumerate}[numeros]
+   
+   \item \textbf{Identificar la Ecuación de Transferencia:}
+   Para crear una simulación de Monte Carlo, necesita un modelo cuantitativo de la actividad,
+   el plan o el proceso comercial que desea explorar. La expresión matemática de su proceso
+   se llama "ecuación de transferencia". Esta puede ser una fórmula comercial o de ingeniería
+   conocida, o puede basarse en un modelo creado a partir de un experimento diseñado (DOE) o
+   un análisis de regresión. 
+   
+   \item \textbf{Definir los Parámetros de Entrada:}
+   Para cada factor en su ecuación de transferencia, determine cómo se distribuyen sus datos.
+   Algunas entradas pueden seguir la distribución normal, mientras que otras siguen una
+   distribución triangular o uniforme. Luego debe determinar los parámetros de distribución
+   para cada entrada. Por ejemplo, necesitaría especificar la media y la desviación estándar
+   para las entradas que siguen una distribución normal. Si no está seguro de qué
+   distribución siguen sus datos utilizando pruebas de bondad de ajuste.
+   
+   \item \textbf{Configurar la Simulación:}
+   Para una simulación válida, debe crear un conjunto de datos aleatorios muy grande para
+   cada entrada, del orden de 100 000 instancias. Estos puntos de datos aleatorios simulan
+   los valores que se verían durante un largo período para cada entrada.
+   
+   \item \textbf{Analizar la Salida del Proceso:}
+   Con los datos simulados en su lugar, puede usar su ecuación de transferencia para calcular
+   los resultados simulados. Ejecutar una cantidad suficientemente grande de datos de entrada
+   simulados a través de su modelo le dará una indicación confiable de lo que generará el
+   proceso con el tiempo, dada la variación anticipada en las entradas.
+   
+ \end{enumerate}
+
+
+\section{Metodología Medrano}
+
+ \begin{enumerate}[numeros]
+   \item Definir un modelo matemático para representar el fenómeno a analizar.
+   \item Identificar en el modelo, las variables deterministas y probabilísticas.
+   \item Para las variables estocásticas o probabilísticas, generar datos aleatorios
+   muestreando de sus respectivas distribuciones.
+   \item Calcular el resultado del modelo utilizando los valores de las variables
+   probabilísticas y combinando con las variables deterministas.
+   \item Realizar el análisis estadístico de los resultados.
+ \end{enumerate}

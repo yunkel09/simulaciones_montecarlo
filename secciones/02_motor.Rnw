@@ -1,0 +1,201 @@
+\chapter{Motor}
+
+\section{Problema}
+
+Su empresa de equipamiento para industrias ha desarrollado un prototipo para un nuevo modelo
+de motor eléctrico.
+
+Los análisis de mercado preliminares han llevado a estimar un precio de venta que puede ser
+de un mínimo de \$250 por unidad, un máximo de \$270 por unidad y un valor más probable de
+\$255/unidad. El prespuesto de gastos administrativos y de publicidad para el primer año es
+de \$400,000 y \$600,000 respectivamente.
+
+Los gastos de personal, materiales y la demanda del primer año no se pueden anticipar con
+exactitud, pero se estiman con base a las siguientes distribuciones de probabilidad:
+
+ \begin{itemize}[itemsep=1ex]
+  \item Costo materiales: rango de valores entre 80 y \$100/unidad
+  \item Demanda: distribución normal, media 15,000 unidades/año y desviación de 4,500
+  unidades/año
+  \item Costo de mano de obra: Distribución normal con media 50 y desviación de 3.
+ \end{itemize}
+
+\setlength{\parskip}{12pt}
+Con esta información, calcule lo siguiente:
+
+ \begin{enumerate}[numeros]
+   
+   \item Calcule el resultado esperado proveniente de la incorporación de este motor
+   eléctrico a la línea de productos de la empresa.
+   
+   \item Sobre la base de un análisis de riesgo estime los siguientes valores:
+   
+    \begin{enumerate}[letras]
+      \item Resultado esperado
+      \item Desvío estándar del resultado
+      \item Rango de dispersión de valores probables
+      \item Intervalo de confianza del resultado con un 95\% de probabilidad.
+      \item Probabilidad de lograr resultados mayores a \$200,000, valor considerado como
+      umbral crítico de aceptación o rechazo del proyecto
+    \end{enumerate}
+   
+ \end{enumerate}
+ 
+ 
+\section{Modelo}
+ 
+
+\begin{equation}
+   \bm{Utilidad = IngresoTotal - CostoTotal}
+   \label{utilidad}
+\end{equation}
+ 
+\begin{equation}
+   CostosTotales = CostosFijos + CostosVariables
+   \label{costos}
+\end{equation}
+
+\begin{equation}
+   CostosFijos = GastosAdmin + Publicidad
+   \label{cfijos}
+\end{equation}
+
+
+\begin{equation}
+   CostosVariables = Demanda \times (CostoMateriales + ManoObra)
+   \label{cvariables}
+\end{equation}
+
+
+\begin{equation}
+   Ingresos = Precio \times Demanda
+   \label{ingresos}
+\end{equation}
+
+
+\section{Parámetros}
+
+ \begin{enumerate}[numeros]
+   
+   \item Configurar simulación:
+   
+<<>>=
+set.seed(2021)
+nreps <- 5e3
+@
+   \item Variables deterministas
+   
+<<>>=
+gastos_administrativos <- 4e5
+gastos_publicidad      <- 6e5
+@
+
+   \item Variables estocásticas
+   
+<<>>=
+precio           <- rtriangle(n = nreps, a = 250, b = 270, c = 255)
+costo_materiales <- runif(n = nreps, min = 80, max = 100)
+demanda          <- rnorm(n = nreps, mean = 15e3, sd = 4.5e3)
+mano_de_obra     <- rnorm(n = nreps, mean = 50, sd = 3)
+@
+   
+ \end{enumerate}
+
+
+\section{Calcular}
+
+<<>>=
+ingresos         <- precio * demanda
+costos_variables <- demanda * (costo_materiales + mano_de_obra)
+costos_fijos     <- gastos_administrativos + gastos_publicidad
+costos_totales   <- costos_fijos + costos_variables 
+@
+
+<<>>=
+uti <- tibble(utilidad = (ingresos - costos_totales)/1e6)
+@
+
+<<>>=
+dol <- dollar_format(accuracy = 0.1)
+brk <- hist(uti$utilidad, plot = F)$breaks
+med <- mean(uti$utilidad)
+des <- sd(uti$utilidad)
+@
+
+\begin{figure}
+<<>>=
+uti |>
+ ggplot(aes(x = utilidad, y = ..density..)) +
+ geom_histogram(fill = "#56B4E9", size = .2, breaks = brk, color = "black") +
+ geom_density(size = 1) +
+ geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
+ scale_x_continuous(name = "Utilidades en millones de dólares [MM]", labels = dol, 
+                    breaks = brk)  +
+ labs(title = "Distribución de las utilidades") + furia
+@
+
+\caption{Interpretación de resultados}
+   \label{fig:dis}
+\end{figure}
+
+\subsection{¿Cuál es la probabilidad de que pierda plata?}
+
+Es la probabilidad acumulada hasta el cero.
+
+<<>>=
+pnorm(0, mean = med, sd = des) |> round(3)
+@
+
+
+\subsection{¿Cuál es la probabilidad de lograr resultados mayores a \$200,000?}
+
+<<>>=
+pnorm(200e3/1e6, mean = med, sd = des, lower.tail = FALSE) |> round(3)
+@
+
+\begin{shaded}
+Si aceptamos el proyecto, ya que es una probabilidad relativamente alta.
+\end{shaded}
+
+\subsection{¿La desviación estándar es muy alta o muy baja?}
+
+<<>>=
+des
+@
+
+Para esto podemos calcular el coeficiente de variación. El coeficiente de variación nos dice
+\textbf{que tan grande es la desviación con respecto a la media}.
+
+<<>>=
+(cof <- round(((des/med) * 100), 2))
+@
+
+
+\begin{shaded}
+Este resultado quiere decir que la desviación estándar es el \Sexpr{cof}\%  de la
+media. Entre mayor es el coeficiente de variación hay mucho riesgo.  El coeficiente de
+variación es un indicador de que tan grande puede ser el riesgo.
+\end{shaded}
+
+
+\subsection{Intervalo de confianza del resultado con un 95\% de probabilidad}
+
+<<>>=
+(int95 <- c(-2, 2) * des + med)
+@
+
+\begin{shaded}
+El 95\% de confianza esta entre una pérdida de \$309K hasta una utilidad de \$1.86 millones.
+\end{shaded}
+
+
+
+
+
+
+
+
+
+
+ 
+ 
