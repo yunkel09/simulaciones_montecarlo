@@ -60,7 +60,7 @@ pal    <- palette_OkabeIto[1:ncol(datos)]
 ndv    <- names(datos)
 @
 
-<<>>=
+<<fig.width=7, fig.asp=1>>=
 map2(.x = ndv, .y = pal, ~ estimar_densidad(df = datos, d = .x, color = .y)) %>%   
  reduce(.f = `+`) + 
  plot_layout(ncol = 2) +
@@ -70,15 +70,15 @@ map2(.x = ndv, .y = pal, ~ estimar_densidad(df = datos, d = .x, color = .y)) %>%
 
 \section{Bondad de Ajuste}
 
-Con base a \citep[pag. ~4]{elignette-muller_fitdistrplus_2015}
+Con base a \citep[pag. ~2]{delignette-muller_fitdistrplus_2015}
 
 \begin{quote}
 Antes de ajustar una o más distribuciones a un conjunto de datos, generalmente es necesario
-elegir buenos candidatos entre un conjunto prede nido de distribuciones. Esta elección puede
+elegir buenos candidatos entre un conjunto predefinido de distribuciones. Esta elección puede
 estar guiada por el conocimiento de los procesos estocásticos que rigen la variable modelada,
-o, en ausencia de conocimiento sobre el proceso subyacente, por la observación de su empírico
-distribución. Para ayudar al usuario en esta elección, desarrollamos funciones para trazar y
-caracterizar la distribución empírica.
+o, en ausencia de conocimiento sobre el proceso subyacente, por la observación de su
+distribución empírica. Para ayudar al usuario en esta elección, desarrollamos funciones para
+trazar y caracterizar la distribución empírica.
 \end{quote}
 
 
@@ -86,11 +86,13 @@ caracterizar la distribución empírica.
 tipodis <- c("norm", "lnorm", "gamma", "unif")
 @
 
-Siempre itera primero con los datos
+A continuación, crearemos una serie de funciones que servirán para lograr ayudar a 
+determinar el tipo de distribuición.
 
 <<>>=
 convertir_a_lista <- function(.df) {
 .df |>
+ drop_na() |> 
  pivot_longer(cols = everything(), names_to = "variable", values_to = "valor") |>
  split(~ variable) |>
  map(~ .x |>
@@ -99,106 +101,118 @@ convertir_a_lista <- function(.df) {
 @
 
 <<>>=
-obtener_nombres <- function(.value_list, .distr) {
- cross(list(data = names(.value_list), distr = .distr)) |> 
+obtener_nombres <- function(lista_valores, tipodis) {
+ cross(list(data = names(lista_valores), distr = tipodis)) |> 
   map(~ .x[[1]]) |>
-  as.character() |> paste0("_", rep(.distr, each = length(.distr)))
+  as.character() |> paste0("_", rep(tipodis, each = length(tipodis))) |> 
+  unique()
 }
 @
 
 <<>>=
-crear_lista_cross <- function(.lista, distr, nombres) {
- cross(list(data = .lista, distr = distr)) |> 
-  set_names(nombres)
+crear_lista_cross <- function(lista_valores, tipodis, nombres_cruza) {
+ cross(list(data = lista_valores, distr = tipodis)) |> 
+  set_names(nombres_cruza)
 }
 @
 
 <<>>=
-crear_ajustes <- function(lista_cartesiana, .fun) {
- lista_cartesiana |> 
-  map(lift(.fun, discrete = F)) |> 
+crear_ajustes <- function(lista_cartesi, fitdistx) {
+list_with_errors <-  lista_cartesi |> 
+  map(lift(fitdistx, discrete = F)) |> 
   map(~ compact(.x)) |> 
-  discard(~ names(.x) == "error") |> 
   map(~ .x[[1]])
+
+list_without_errors <- list_with_errors[list_with_errors |>
+                                         map(~ class(.x)[[1]]) |>
+                                         map_lgl(~ .x == "fitdist")]
 }
 @
 
 <<>>=
-crear_tabla_gof <- function(lista_ajustada, nombres_dfnumerico) {
- nombres_dfnumerico |>
-  map(~ lista_ajustada[str_detect(names(lista_ajustada), .x)]) |> 
-  map(~ gofstat(.x)[c(6, 8, 10, 12)]) |> 
-  set_names(nombres_dfnumerico) |> 
+crear_tabla_gof <- function(lista_ajustad, nombres_dfnum) {
+a <-  nombres_dfnum |>
+  map(~ lista_ajustad[str_detect(names(lista_ajustad), .x)])
+
+  map(~ gofstat(.x)[c(6, 8, 10, 12, 13)]) |> 
+  set_names(nombres_dfnum) |> 
   map_dfr(~ bind_rows(.x, .id = "test"), .id = "variable") |> 
   mutate(across(where(is.numeric), ~ na_if(.x, y = Inf)))
 }
 @
 
 <<>>=
-validar_gof <- function(.df, distr) {
- dataframe_numerico <- .df[sapply(.df, is.numeric)]
- nombres_dfnumerico <- names(dataframe_numerico)
- lista_valores <- convertir_a_lista(.df = dataframe_numerico)
- nombres_cruzados <- obtener_nombres(.value_list = lista_valores, .distr = distr)
- lista_cartesiana <- crear_lista_cross(.lista  = lista_valores, distr = distr, 
-                                           nombres = nombres_cruzados)
- fitdist_safe <- safely(fitdist)
- lista_ajustada <- crear_ajustes(lista_cartesiana, fitdist_safe)
- crear_tabla_gof(lista_ajustada, nombres_dfnumerico)
+validar_gof <- function(df, tipodis) {
+ dataframe_num <- df[sapply(df, is.numeric)]
+ nombres_dfnum <- names(dataframe_num)
+ lista_valores <- convertir_a_lista(dataframe_num)
+ nombres_cruza <- obtener_nombres(lista_valores, tipodis)
+ lista_cartesi <- crear_lista_cross(lista_valores, tipodis, nombres_cruza)
+ fitdistx      <- safely(fitdist)
+ lista_ajustad <- crear_ajustes(lista_cartesi, fitdistx)
+ crear_tabla_gof(lista_ajustad, nombres_dfnum) |> clean_names()
+}
+@
+
+<<echo=FALSE>>=
+scoring_gof <- function(tabla_gof) {
+ mk_00 <- c("norm" = "normal",
+           "lnorm" = "log_normal",
+           "unif"  = "uniforme")
+ modf <- . %>% str_remove_all("x\\d_mle_") %>% recode(!!!mk_00)
+ tabla_gof |> 
+  mutate(distribucion = names(tabla_gof)[apply(tabla_gof, MARGIN = 1, FUN = which.min)],
+        across(distribucion, modf)) |> 
+  suppressWarnings() |> 
+  count(variable, distribucion, name = "puntuacion") |> 
+  group_by(variable) |> 
+  filter(puntuacion == max(puntuacion)) |> 
+  ungroup()
 }
 @
 
 
-<<>>=
-m <- cross(list(data = names(lista_valores), distr = tipodis)) |> 
- map(~ .x[[1]]) |> as.character() |> paste0("_", rep(tipodis, each = length(tipodis)))
-f <- cross(list(data = lista_valores, distr = tipodis)) |> 
- set_names(m)
+<<echo=FALSE>>=
+gof <- validar_gof(df = datos, distr = tipodis)
 @
 
 <<>>=
-fl <- safely(fitdist)
-@
-
-
-<<>>=
-h <- f |> 
- map(lift(fl, discrete = F)) |> 
- map(~ compact(.x)) |> 
- discard(~ names(.x) == "error") |> 
- map(~ .x[[1]])
-
- 
-@
-
-
-<<>>=
-names(datos) |> map(~ h[str_detect(names(h), .x)]) |> 
- map(~ gofstat(.x)[c(6, 8, 10, 12)]) |> 
- set_names(names(datos)) |> 
- map_dfr(~ bind_rows(.x, .id = "test"), .id = "variable")
+gof |> tabla("GOF")
 @
 
 <<>>=
-p <- crear_tabla_gof(lista_ajustada = h, nombres_dfnumerico = names(datos))
+gof |> 
+ scoring_gof() |> 
+ tabla("Distribución más probable con base a scoring")
 @
 
 
-<<>>=
-lmap(h, ~ names(.x) == "costomo_unif")
-@
+TODO: 
 
 
 
-<<>>=
-fena <- fitdist(data = datos$precio, distr = "norm")
-fenb <- fitdist(data = datos$precio, distr = "lnorm")
-fenc <- fitdist(data = datos$precio, distr = "gamma")
-fend <- fitdist(data = datos$precio, distr = "unif")
 
-gofstat(list(fena, fenb, fenc, fend))
 
-@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

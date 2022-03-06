@@ -491,9 +491,6 @@ probar_normalidad <- function(vector) {
 }
 @
 
-
-
-
 % aquí va la portada
 
 
@@ -512,9 +509,9 @@ probar_normalidad <- function(vector) {
 
  
 
-<<motor, child='secciones/02_motor.Rnw'>>=
-
-@
+% # <<motor, child='secciones/02_motor.Rnw'>>=
+% # 
+% # @
 
 % # <<mandrell, child='secciones/03_mandrell.Rnw'>>=
 % # 
