@@ -393,11 +393,12 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
  import::from(kableExtra, .except = "group_rows")
  import::from(cowplot, .except = "stamp")
  import::from(colorblindr, scale_fill_OkabeIto, palette_OkabeIto)
+ import::from(patchwork, plot_layout, plot_annotation)
  import::from(conectigo, cargar_fuentes)
  import::from(ggridges, geom_density_ridges_gradient)
 
  # cargar paquetes en el que sabemos necesitamos todas las opciones
- pacman::p_load(triangle, scales, tidyverse)
+ pacman::p_load(skimr, triangle, scales, fitdistrplus, tidyverse)
  # cargar las fuentes a utilizar
  cargar_fuentes()
  
@@ -432,8 +433,66 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
    kable_paper(full_width = F) %>% 
    kable_styling(latex_options = "HOLD_position", table.envir = "float")
  
-  }
+}
+ 
+theme_set(yunkel) 
 @
+
+<<include=FALSE>>=
+resumir <- function(.df) {
+ my_skim <- skim_with(
+  base = NULL,
+  numeric = sfl(media      = ~ mean(., na.rm = TRUE),
+                mediana    = ~ median(., na.rm = TRUE),
+                desviacion = ~ sd(., na.rm = TRUE)), append = F)
+ my_skim(.df) |> 
+ rename_with(~ str_replace_all(.x, "numeric\\.", "")) |> 
+ rename(tipo = skim_type, variable = skim_variable)
+}
+
+estimar_densidad <- function(df, d, color) {
+	
+	brk <- hist(df[[d]], plot = FALSE)$breaks 
+	med <- mean(df[[d]])
+	
+	df %>% 
+	  ggplot(aes(x = .data[[d]], y = ..density..)) +
+	  geom_histogram(fill   = color,
+	                 colour = "black",
+	                 size   = .2,
+	                 breaks = brk) +
+	  scale_x_continuous(name   = d,
+	                     breaks = brk) +
+	  geom_density(size = 1) +
+	  geom_vline(xintercept = med, 
+	             linetype = "dashed",
+	             color = "red", 
+	             alpha = 0.5) +
+	 labs(title = str_to_title(d))
+}
+
+funciones <- list(
+ 
+  shapiro_wilk       = function(x) shapiro.test(x),
+  jarque_bera        = function(x) JarqueBeraTest(x, robust = F),
+  pearson            = function(x) pearson.test(x), 
+  shapiro_francia    = function(x) sf.test(x),
+  kolgomoro_smirnov  = function(x) lillie.test(x)
+)
+
+probar_normalidad <- function(vector) {
+	
+	funciones %>% 
+		map(exec, x = vector) %>% 
+		map_df(tidy) %>% 
+		select(method, p_value = p.value) %>% 
+		# mutate(normalidad = ifelse(p_value < 0.05, "NO_NORMAL", "NORMAL")) %>% 
+		arrange(desc(p_value))
+}
+@
+
+
+
 
 % aquí va la portada
 
@@ -457,9 +516,17 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
 
 @
 
+% # <<mandrell, child='secciones/03_mandrell.Rnw'>>=
+% # 
+% # @
 
 
-<<bib, child='secciones/09_bibliografia.Rnw'>>=
+<<producto, child='secciones/04_producto.Rnw'>>=
+
+@
+
+
+<<bib, child='secciones/05_bibliografia.Rnw'>>=
 
 @
 

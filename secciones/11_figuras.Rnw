@@ -1,3 +1,0 @@
-\addcontentsline{toc}{chapter}{\listfigurename}
-\listoffigures
-\clearpage

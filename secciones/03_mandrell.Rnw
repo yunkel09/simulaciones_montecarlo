@@ -31,7 +31,6 @@ Utilidad Total = Ingreso Total - Costo Total
 nrep <- 5e4
 @
 
-
 <<>>=
 costo_fijo     <- 1e5
 costo_variable <- runif(nrep, 30, 38)
@@ -55,12 +54,6 @@ ingresos2 <- (demanda < produccion) *  (demanda * precio +
                                        (demanda >= produccion) * (produccion * precio) 
 @
 
-Comprobamos
-
-<<>>=
-summary(ingresos)
-summary(ingresos2)
-@
 
 <<>>=
 costos <- costo_fijo + produccion * costo_variable
@@ -71,20 +64,36 @@ utilidad <- ingresos - costos
 @
 
 <<>>=
-profit <- tibble(utilidad = (ingresos - costos_totales))
+profit <- tibble(utilidad = (ingresos - costos)/1e6)
 @
 
 <<>>=
-brk <- hist(uti$utilidad, plot = F)$breaks
-med <- mean(uti$utilidad)
-des <- sd(uti$utilidad)
+res <- resumir(profit)
+@
+
+<<fig.width=8>>=
+brk <- hist(profit$utilidad, plot = F)$breaks
 profit |> 
  ggplot(aes(x = utilidad, y = ..density..)) +
- geom_histogram(fill = "#56B4E9", size = .2, breaks = brk, color = "black") +
+ geom_histogram(fill = "#56B4E9", size = .2, breaks = brk, color = "white") +
  geom_density(size = 1) +
  geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
- scale_x_continuous(name = "Utilidades en millones de dólares [MM]", labels = dol, 
-                    breaks = brk)  +
+ geom_vline(xintercept = res[["media"]], color = "black", linetype = "dashed") +
+ scale_x_continuous(name = "Utilidades en millones de dólares [MM]", 
+                    labels = dollar, expand = c(0, 0),
+                    limits = c(-2.2, 1.5),
+                    breaks = seq(-2.2, 1.2, 0.4))  +
  labs(title = "Distribución de las utilidades") + furia
 @
+
+
+
+
+
+
+
+
+
+
+
 
