@@ -90,13 +90,23 @@ A continuación, crearemos una serie de funciones que servirán para lograr ayud
 determinar el tipo de distribuición.
 
 <<>>=
-convertir_a_lista <- function(.df) {
-.df |>
- drop_na() |> 
- pivot_longer(cols = everything(), names_to = "variable", values_to = "valor") |>
- split(~ variable) |>
- map(~ .x |>
-      pull(valor))
+convertir_a_lista <- function(dataframe_num) {
+ dataframe_num |> select(!any_of(vars_to_remove(dataframe_num))) |>
+   drop_na() |> 
+   pivot_longer(cols = everything(), names_to = "variable", values_to = "valor") |>
+   split(~ variable) |>
+   map(~ .x |>
+        pull(valor))
+}
+@
+
+<<>>=
+vars_to_remove <- function(dataframe_num) {
+ sin_constantes <- dataframe_num |>
+  janitor::remove_constant()
+ k <- sin_constantes |>
+   map(~ as.numeric(nearZeroVar(.x, saveMetrics = TRUE)) |> pluck(2))
+ names(which(k |> map(~ .x) < 10))
 }
 @
 
@@ -104,8 +114,7 @@ convertir_a_lista <- function(.df) {
 obtener_nombres <- function(lista_valores, tipodis) {
  cross(list(data = names(lista_valores), distr = tipodis)) |> 
   map(~ .x[[1]]) |>
-  as.character() |> paste0("_", rep(tipodis, each = length(tipodis))) |> 
-  unique()
+  as.character() |> paste0("_", rep(tipodis, each = length(names(lista_valores))))
 }
 @
 
@@ -118,25 +127,30 @@ crear_lista_cross <- function(lista_valores, tipodis, nombres_cruza) {
 
 <<>>=
 crear_ajustes <- function(lista_cartesi, fitdistx) {
-list_with_errors <-  lista_cartesi |> 
-  map(lift(fitdistx, discrete = F)) |> 
-  map(~ compact(.x)) |> 
+ list_with_errors <-  lista_cartesi |> 
+   map(lift(fitdistx, discrete = F)) |> 
+   map(~ compact(.x))
+ errores_ind <- unname(which(list_with_errors |> map(~ names(.x)) == "error"))  
+ if (length(errores_ind > 0)) {
+  list_with_errors[-unname(which(list_with_errors |> map(~ names(.x)) == "error"))] |> 
   map(~ .x[[1]])
-
-list_without_errors <- list_with_errors[list_with_errors |>
-                                         map(~ class(.x)[[1]]) |>
-                                         map_lgl(~ .x == "fitdist")]
+ } else {
+  list_with_errors |> map(~ .x[[1]])
+ }
 }
 @
 
 <<>>=
 crear_tabla_gof <- function(lista_ajustad, nombres_dfnum) {
-a <-  nombres_dfnum |>
+ sfit <-  nombres_dfnum |>
   map(~ lista_ajustad[str_detect(names(lista_ajustad), .x)])
-
-  map(~ gofstat(.x)[c(6, 8, 10, 12, 13)]) |> 
-  set_names(nombres_dfnum) |> 
-  map_dfr(~ bind_rows(.x, .id = "test"), .id = "variable") |> 
+ allf <- sfit |> 
+  map(~ gofstat(.x)) |> 
+  set_names(nombres_dfnum)
+ nombres <- names(allf[[1]])|> str_subset("chisq|test|nbfit|discrete", negate = T)
+ allf |> map(~ .x[names(.x) %in% nombres] |>
+            bind_rows(.id = "test")) |>
+  map_dfr(~ .x, .id = "variable") |> 
   mutate(across(where(is.numeric), ~ na_if(.x, y = Inf)))
 }
 @
@@ -150,7 +164,13 @@ validar_gof <- function(df, tipodis) {
  lista_cartesi <- crear_lista_cross(lista_valores, tipodis, nombres_cruza)
  fitdistx      <- safely(fitdist)
  lista_ajustad <- crear_ajustes(lista_cartesi, fitdistx)
- crear_tabla_gof(lista_ajustad, nombres_dfnum) |> clean_names()
+ remover <- vars_to_remove(dataframe_num)
+ if (length(remover) == 0) {
+  crear_tabla_gof(lista_ajustad, nombres_dfnum) |> clean_names()
+ } else {
+  nuevos_nombre <- nombres_dfnum[!nombres_dfnum %in% remover]
+  crear_tabla_gof(lista_ajustad, nuevos_nombre) |> clean_names()
+ }
 }
 @
 
@@ -171,9 +191,10 @@ scoring_gof <- function(tabla_gof) {
 }
 @
 
+Aun no me funciona bien mtcars ni datasets::airquality
 
 <<echo=FALSE>>=
-gof <- validar_gof(df = datos, distr = tipodis)
+gof <- validar_gof(df = airquality, tipodis = tipodis)
 @
 
 <<>>=
@@ -187,7 +208,6 @@ gof |>
 @
 
 
-TODO: 
 
 
 
